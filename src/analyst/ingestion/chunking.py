@@ -6,7 +6,7 @@ from analyst.log import print_verbose
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 @dataclass
-class Chunk:
+class Chunk: # Custom dataclass to ensure strict metadata structure in the future when using Document()
     chunk_id: str
     text: str
     heading: str # nearest markdown heading above this chunk
@@ -57,7 +57,7 @@ def _split_by_headings(text: str) -> list[tuple[str, str]]:
     if body:
         sections.append((last_heading, body))
 
-    return sections
+    return sections # [(heading, section), ...]
 
 # The actual Chunker classs
 class MarkdownChunker:
@@ -98,6 +98,7 @@ class MarkdownChunker:
             print_verbose(self, error=True, message=f"[{metadata.get('ticker', '?')}] No content found after heading split for '{section}'.")
             return []
 
+        # heading_sections but with some of the tuples split into multiple due to large token counts
         raw_chunks: list[tuple[str, str]] = []  # (heading, chunk_text)
 
         for heading, body in heading_sections:
@@ -162,7 +163,7 @@ class MarkdownChunker:
 
     def chunk_all_sections(
         self,
-        sections: dict[str, str],
+        sections: dict[str, str], # {"mda": "all the text for mda", "risk_factors": "text for risk"}
         metadata: dict,
     ) -> list[Chunk]:
         

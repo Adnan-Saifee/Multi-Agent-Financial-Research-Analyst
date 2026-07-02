@@ -21,7 +21,7 @@ class FilingParser:
         if not self.full_markdown:    
             print_verbose(self, "Converting full filing to Markdown strings...")
             self.full_markdown = filing.markdown()
-            
+
         return self.full_markdown
 
     def extract_section(self, filing, start_item: str, end_item: str) -> str:
@@ -33,18 +33,30 @@ class FilingParser:
         
         print_verbose(self, f"Slicing boundaries from {start_item} to {end_item}...")
         # Strips out spacing and builds a resilient regex pattern for Markdown headers
+        # pattern = re.compile(
+        #     rf'(##\s*{re.escape(start_item)}\b.*?)(##\s*{re.escape(end_item)}\b)', 
+        #     re.DOTALL | re.IGNORECASE
+        # )
+
         pattern = re.compile(
-            rf'(##\s*{re.escape(start_item)}\b.*?)(##\s*{re.escape(end_item)}\b)', 
-            re.DOTALL | re.IGNORECASE
+            rf'(##\s*{re.escape(start_item)}[\s.,-].*?)(##\s*{re.escape(end_item)}[\s.,-]|^\s*{re.escape(end_item)}[\s.,-])', 
+            re.DOTALL | re.IGNORECASE | re.MULTILINE
         )
         
         match = pattern.search(markdown_data)
         if not match:
             # Broader fallback if the document layout skips standard Markdown header tags
+            print_verbose(self, error=True, message="Falling back to broader regex pattern matching", local_verbose=True)
+            # pattern = re.compile(
+            #     rf'({re.escape(start_item)}\b.*?)({re.escape(end_item)}\b)', 
+            #     re.DOTALL | re.IGNORECASE
+            # )
+
             pattern = re.compile(
-                rf'({re.escape(start_item)}\b.*?)({re.escape(end_item)}\b)', 
-                re.DOTALL | re.IGNORECASE
+                rf'(^\s*{re.escape(start_item)}[\s.,-].*?)(^\s*{re.escape(end_item)}[\s.,-])', 
+                re.DOTALL | re.IGNORECASE | re.MULTILINE
             )
+
             match = pattern.search(markdown_data)
 
         if not match:
@@ -80,14 +92,33 @@ class FilingParser:
                     in_table = True
                     title_lines = []
                     look_back = idx - 1
-                    
-                    while look_back >= 0 and len(title_lines) < 3:
+                    blank_count = 0
+
+                    passed_text_lines = 0  # track whether we've seen real text since starting
+
+                    while look_back >= 0 and len(title_lines) < 6:
                         prev_line = lines[look_back].strip()
-                        # Break look-back if we collide with an upper table or empty Markdown syntax lines
+
                         if prev_line.endswith('|') or re.match(r'^[\s|:-]+$', prev_line):
-                            break
-                        if prev_line != "":
-                            title_lines.insert(0, lines[look_back])
+                            if passed_text_lines > 0:
+                                # We already grabbed real text lines above, now hitting pipes again
+                                # — this is a previous table's boundary, hard stop
+                                break
+                            else:
+                                # Still in the header rows of the current table, skip past them
+                                look_back -= 1
+                                continue
+
+                        if prev_line == "":
+                            blank_count += 1
+                            if blank_count > 2:
+                                break
+                            look_back -= 1
+                            continue
+
+                        blank_count = 0
+                        passed_text_lines += 1
+                        title_lines.insert(0, lines[look_back])
                         look_back -= 1
                     
                     if title_lines:

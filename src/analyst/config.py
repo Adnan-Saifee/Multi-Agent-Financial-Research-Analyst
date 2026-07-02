@@ -7,13 +7,15 @@ never get hardcoded into source files.
 """
 
 from pathlib import Path
-
+from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
-
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL_LARGE: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL_SMALL: str = "llama-3.1-8b-instant"
     # --- SEC EDGAR ---
     # SEC requires every request to declare a User-Agent identifying who's
     # asking. This is NOT an API key or account — just a self-declared
@@ -27,6 +29,8 @@ class Settings(BaseSettings):
     RAW_DATA_DIR: Path = PROJECT_ROOT / "data" / "raw"
     PROCESSED_DATA_DIR: Path = PROJECT_ROOT / "data" / "processed"
     CHROMA_DIR: Path = PROJECT_ROOT / "data" / "chroma_db"
+
+    TICKERS: List[str] = ["AAPL", "MSFT", "NVDA"]
 
 
 settings = Settings()

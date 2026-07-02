@@ -33,7 +33,7 @@ def print_verbose(obj, message, local_verbose: bool = False, error: bool = False
     # 2. Check all verbose conditions
     if global_verbose:
         print(message)
-    elif local_verbose is True:
+    elif local_verbose is True or error is True:
         print(message)
     elif hasattr(obj, "verbose") and isinstance(obj.verbose, bool) and obj.verbose:
         print(message)
